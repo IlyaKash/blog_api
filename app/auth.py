@@ -1,22 +1,21 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from schemas.user import UserCreate, UserInDB, UserResponse
-
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 import jwt
 from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
-from pydantic import BaseModel
 
-from config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, SECRET_KEY
-
+from schemas.user import UserInDB
 from database import get_async_session
 from models.user import User
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
+
+from config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, SECRET_KEY
 
 class Token(BaseModel):
     access_token:str

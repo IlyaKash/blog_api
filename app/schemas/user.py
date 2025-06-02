@@ -32,3 +32,14 @@ class UserResponse(UserBase):
 class UserPublic(UserInDB):
     articles_count: int
     comments_count: int
+
+
+class UserUpdate(BaseModel):
+    email: EmailStr
+    username: str
+    is_active: bool
+
+class UserPatch(BaseModel):
+    email: Optional[EmailStr]=None
+    username: Optional[str]=None
+    is_active: Optional[bool]=None
