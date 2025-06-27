@@ -29,7 +29,7 @@ oauth2_scheme=OAuth2PasswordBearer(tokenUrl="/authontication/token")
 
 router=APIRouter(
     prefix="/authontication",
-    tags=["user"]
+    tags=["auth"]
 )
 
 def verify_password(plain_password, hashed_password):
