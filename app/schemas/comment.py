@@ -6,7 +6,7 @@ class CommentBase(BaseModel):
     content: str=Field(... , min_length=1, max_length=1000)
 
 class CommentCreate(CommentBase):
-    pass
+    article_id: int
 
 class CommentResponse(CommentBase):
     id: int
@@ -16,3 +16,6 @@ class CommentResponse(CommentBase):
 
     class Config:
         from_attributes=True
+
+class CommnetUpdate(CommentBase):
+    pass
