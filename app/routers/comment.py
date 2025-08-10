@@ -62,13 +62,28 @@ async def full_update_comment(
     session: AsyncSession=Depends(get_async_session),
     current_user: UserInDB=Depends(get_current_user)
 ):
+    result = await session.execute(select(Comment).where(Comment.id == comment_id))
+    comment = result.scalar_one_or_none()
+
+    if not comment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Comment not found"
+        )
+
+    if comment.author_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only update your own comments"
+        )
+
     stmt=(
         update(Comment)
         .where(Comment.id==comment_id)
         .values(**update_data.model_dump(exclude_unset=True))
         .execution_options(synchronize_session="fetch")
     )
-    await session.add(stmt)
+    await session.execute(stmt)
     await session.commit()
 
     result=await session.execute(select(Comment).where(Comment.id==comment_id))

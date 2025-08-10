@@ -62,13 +62,28 @@ async def full_update_article(
     current_user: UserInDB=Depends(get_current_user),
     session: AsyncSession=Depends(get_async_session),   
 ):
+    reuslt = await session.execute(select(Article).where(Article.id==article_id))
+    article=reuslt.scalar_one()
+
+    if not article:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Article not found"
+        )
+
+    if article.author_id!=current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only update your own article"
+        )
+
     stmt=(
         update(Article)
         .where(Article.id==article_id)
         .values(**update_data.model_dump(exclude_unset=True))
         .execution_options(synchronize_session="fetch")
     )
-    await session.add(stmt)
+    await session.execute(stmt)
     await session.commit()
 
     result = await session.execute(select(Article).where(Article.id==article_id))
@@ -84,12 +99,27 @@ async def partial_update_article(
     current_user: UserInDB=Depends(get_current_user),
     session: AsyncSession=Depends(get_async_session)
 ):
+    reuslt = await session.execute(select(Article).where(Article.id==article_id))
+    article=reuslt.scalar_one()
+
+    if not article:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Article not found"
+        )
+
+    if article.author_id!=current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only update your own article"
+        )
+    
     stmt=(
         update(Article)
         .where(Article.id==article_id)
         .values(**update_data.model_dump(exclude_unset=True, exclude_none=True))
     )
-    await session.add(stmt)
+    await session.execute(stmt)
     await session.commit()
 
     result = await session.execute(select(Article).where(Article.id==article_id))
