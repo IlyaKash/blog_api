@@ -106,7 +106,7 @@ async def delete_article(
 ):
     result=await session.execute(select(Article).where(Article.id==article_id))
     existing_article=result.scalar()
-    if not result:
+    if not existing_article:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"This article by user {current_user.username} with id={article_id} does not exist"

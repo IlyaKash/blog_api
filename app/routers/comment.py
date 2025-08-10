@@ -21,12 +21,12 @@ async def add_comment(
     comment: Annotated[CommentCreate, Depends()],
     article_id: int,
     session: AsyncSession=Depends(get_async_session),
-    user: UserInDB=Depends(get_current_user)
+    current_user: UserInDB=Depends(get_current_user)
 ):
     new_comment=Comment(
         article_id=article_id,
         content=comment.content,
-        author_id=user.id
+        author_id=current_user.id
     )
     session.add(new_comment)
     await session.commit()
@@ -38,7 +38,7 @@ async def add_comment(
 async def get_comments_on_the_article(
     article_id: int,
     session: AsyncSession=Depends(get_async_session),
-    user: UserInDB=Depends(get_current_user)
+    current_user: UserInDB=Depends(get_current_user)
 ):
     result=await session.execute(select(Comment).where(Comment.article_id==article_id))
     comments=result.scalars().all()
@@ -48,7 +48,7 @@ async def get_comments_on_the_article(
 async def get_comments_on_the_user(
     another_user_id: int,
     session: AsyncSession=Depends(get_async_session),
-    user: UserInDB=Depends(get_current_user)
+    current_user: UserInDB=Depends(get_current_user)
 ):
     result=await session.execute(select(Comment).where(Comment.author_id==another_user_id))
     comments=result.scalars().all()
@@ -60,7 +60,38 @@ async def full_update_comment(
     comment_id: int,
     update_data: Annotated[CommnetUpdate, Depends()],
     session: AsyncSession=Depends(get_async_session),
-    user: UserInDB=Depends(get_current_user)
+    current_user: UserInDB=Depends(get_current_user)
 ):
-    pass
+    stmt=(
+        update(Comment)
+        .where(Comment.id==comment_id)
+        .values(**update_data.model_dump(exclude_unset=True))
+        .execution_options(synchronize_session="fetch")
+    )
+    await session.add(stmt)
+    await session.commit()
+
+    result=await session.execute(select(Comment).where(Comment.id==comment_id))
+    update_comment=result.scalar_one()
     
+    return update_comment
+
+@router.delete("/{comment_id}")
+async def delete_comment(
+    comment_id: int,
+    current_user: UserInDB=Depends(get_current_user),
+    session: AsyncSession=Depends(get_async_session)
+):
+    result= await session.execute(select(Comment).where(Comment.id==comment_id))
+    existing_comment=result.scalar()
+
+    if not existing_comment:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This comment with id={comment_id} does not exist"
+        )
+
+    await session.delete(existing_comment)
+    await session.commit()
+
+    return {"detail": f"The comment with id={comment_id} successfully deleted"}
