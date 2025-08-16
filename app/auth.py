@@ -14,6 +14,8 @@ from schemas.user import UserInDB
 from database import get_async_session
 from models.user import User
 
+from pydantic import BaseModel
+
 
 from config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, SECRET_KEY
 
@@ -25,10 +27,10 @@ class TokenData(BaseModel):
     username:str|None=None
 
 pwd_context=CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme=OAuth2PasswordBearer(tokenUrl="/authontication/token")
+oauth2_scheme=OAuth2PasswordBearer(tokenUrl="/authentication/token")
 
 router=APIRouter(
-    prefix="/authontication",
+    prefix="/authentication",
     tags=["auth"]
 )
 
@@ -111,3 +113,56 @@ async def login_for_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     return Token(access_token=access_token, token_type="bearer")
+
+
+#функции для логина и регистрации
+
+class UserRegistr(BaseModel):
+    username: str
+    email: str
+    password: str
+
+@router.post("/registr")
+async def registr_user(
+    user_data: UserRegistr,
+    session: AsyncSession=Depends(get_async_session)
+):
+    #проверка на существования пользователя
+    existing_user = await get_user(user_data.username, session)
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already taken"
+        )
+    
+    #создание нового пользователя
+    new_user=UserInDB(
+        username=user_data.username,
+        email=user_data.email,
+        hashed_password=get_password_hash(user_data.password),
+        disabled=False
+    )
+
+    #сохраняем в бд
+    db_user=User(**new_user.model_dump())
+    session.add(db_user)
+    await session.commit()
+
+    return {"message", "User created successfully"}
+
+
+
+@router.post("/login")
+async def login_user(
+    form_data: OAuth2PasswordRequestForm= Depends(),
+    session: AsyncSession=Depends(get_async_session)
+):
+    user = await authenticate_user(form_data.username, form_data.password, session)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password"
+        )
+    
+    access_token=create_access_token(data={"sub": user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
