@@ -10,7 +10,7 @@ import jwt
 from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
 
-from schemas.user import UserInDB
+from schemas.user import UserInDB, UserCreate
 from database import get_async_session
 from models.user import User
 
@@ -117,14 +117,10 @@ async def login_for_access_token(
 
 #функции для логина и регистрации
 
-class UserRegistr(BaseModel):
-    username: str
-    email: str
-    password: str
 
 @router.post("/registr")
 async def registr_user(
-    user_data: UserRegistr,
+    user_data: UserCreate,
     session: AsyncSession=Depends(get_async_session)
 ):
     #проверка на существования пользователя
@@ -136,16 +132,16 @@ async def registr_user(
         )
     
     #создание нового пользователя
-    new_user=UserInDB(
+    new_user=User(
+        email=user_data.email, 
         username=user_data.username,
-        email=user_data.email,
         hashed_password=get_password_hash(user_data.password),
-        disabled=False
+        is_active=True,
+        is_superuser=False,
     )
 
     #сохраняем в бд
-    db_user=User(**new_user.model_dump())
-    session.add(db_user)
+    session.add(new_user)
     await session.commit()
 
     return {"message", "User created successfully"}
